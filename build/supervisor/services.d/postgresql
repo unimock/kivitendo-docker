@@ -1,0 +1,5 @@
+[program:postgres]
+command=/etc/supervisor/proxy.d/postgresql
+numprocs=1
+autostart=true
+autorestart=true

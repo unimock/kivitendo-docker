@@ -1,0 +1,3 @@
+#!/bin/bash
+chown -Rf postgres:postgres /var/lib/postgresql
+exit 0

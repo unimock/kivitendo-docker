@@ -1,0 +1,6 @@
+[program:apache2]
+command=/bin/bash -c "source /etc/apache2/envvars && exec /usr/sbin/apache2 -DFOREGROUND"
+#command=/usr/local/bin/supervisord-apache2.sh
+#numprocs=1
+#autostart=true
+#autorestart=true

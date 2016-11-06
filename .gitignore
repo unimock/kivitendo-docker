@@ -1,0 +1,7 @@
+.directory
+.do.cfg
+docker-compose.yml
+persistent/
+service/
+
+

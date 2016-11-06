@@ -1,0 +1,32 @@
+version: '2'
+services:
+  wws:
+    ##################################################
+    # BUILD section
+    ##################################################
+    build:
+      context: ./build
+      dockerfile: Dockerfile
+      args:
+        BUILD_TZ: Europe/Berlin
+        BUILD_LOCALE: de_DE
+        BUILD_PG_PASSWD: docker
+        BUILD_PG_VERSION: 9.3
+        BUILD_KIVITENDO_VERSION: release-3.2.0
+    ##################################################
+    # RUN section
+    ##################################################
+    image: unimock/kivitendo-docker:0.0.1
+    container_name: wws
+    restart: unless-stopped
+    hostname: myhost
+    domainname: test.com 
+    volumes:
+      - ./service:/service # service volume for overwrites (ovm) and migration (mig)
+      - ./persistent/postgresql:/var/lib/postgresql
+    environment:
+       # ssh rsyslog cron apache2 postgresql
+       - DISABLED_SERVICES=ssh
+    ports:
+      - "8881:80"
+
