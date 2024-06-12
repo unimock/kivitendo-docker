@@ -1,21 +1,5 @@
-#
-#                    ##        .            
-#              ## ## ##       ==            
-#           ## ## ## ##      ===            
-#       /""""""""""""""""\___/ ===        
-#  ~~~ {~~ ~~~~ ~~~ ~~~~ ~~ ~ /  ===- ~~~   
-#       \______ o          __/            
-#         \    \        __/             
-#          \____\______/                
-# 
-#          |          |
-#       __ |  __   __ | _  __   _
-#      /  \| /  \ /   |/  / _\ | 
-#      \__/| \__/ \__ |\_ \__  |
-#
-FROM ubuntu:14.04
-
-MAINTAINER Uni Mock <unimock@gate-m.de> version: 0.0
+ARG BUILD_IMAGE="ubuntu:14.04"
+FROM ${BUILD_IMAGE}
 
 # Let the container know that there is no tty
 ENV DEBIAN_FRONTEND noninteractive
@@ -26,7 +10,7 @@ RUN echo "$BUILD_TZ" > /etc/timezone && \
     dpkg-reconfigure -f noninteractive tzdata
 
 #Packages 
-RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+#RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 RUN apt-get update
 RUN apt-get -y upgrade
 
@@ -42,49 +26,30 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get -y install apache2 libarchive-zip-per
     librose-db-perl librose-object-perl libsort-naturally-perl libpq5 \
     libstring-shellquote-perl libtemplate-perl libtext-csv-xs-perl \
     libtext-iconv-perl liburi-perl libxml-writer-perl libyaml-perl \
-    libfile-copy-recursive-perl postgresql git build-essential \
+    libfile-copy-recursive-perl git build-essential \
     libgd-gd2-perl libimage-info-perl sed supervisor libgd-gd2-perl \
-    libalgorithm-checkdigits-perl libapache2-mod-fcgid
-RUN DEBIAN_FRONTEND=noninteractive apt-get -y install language-pack-de-base
+    libalgorithm-checkdigits-perl libapache2-mod-fcgid language-pack-de-base \
+    python-software-properties software-properties-common
+
+ARG BUILD_PG_VERSION="9.3"
+
+RUN DEBIAN_FRONTEND=noninteractive apt-get update &&\
+    apt-get install -y postgresql-${BUILD_PG_VERSION} postgresql-client-${BUILD_PG_VERSION} postgresql-contrib-${BUILD_PG_VERSION}
 
 #Install missing Perl Modules
 RUN cpan HTML::Restrict
 RUN cpan Image::Info
 
-# ADD KIVITENDO
-# Kivitendo intallation
-ARG BUILD_KIVITENDO_VERSION="release-3.2.0"
-RUN git clone https://github.com/kivitendo/kivitendo-erp.git /var/www/kivitendo-erp
-RUN cd /var/www/kivitendo-erp && git checkout ${BUILD_KIVITENDO_VERSION}
-ADD kivitendo.conf /var/www/kivitendo-erp/config/kivitendo.conf
-
-#Check Kivitendo installation
-RUN cd /var/www/kivitendo-erp/ && perl /var/www/kivitendo-erp/scripts/installation_check.pl
-
-
-# ADD POSTGRES
-# Add the PostgreSQL PGP key to verify their Debian packages.
-# It should be the same key as https://www.postgresql.org/media/keys/ACCC4CF8.asc
-RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys B97B0AFCAA1A47F044F244A07FCC7D46ACCC4CF8
-
-# Add PostgreSQL's repository. It contains the most recent stable release
-RUN echo "deb http://apt-archive.postgresql.org/pub/repos/apt trusty-pgdg-archive main" > /etc/apt/sources.list.d/pgdg.list
-
-# Install ``python-software-properties``, ``software-properties-common`` and PostgreSQL
-
-ARG BUILD_PG_VERSION="9.3"
-
-RUN DEBIAN_FRONTEND=noninteractive apt-get update &&\
-    apt-get install -y python-software-properties software-properties-common  \
-    postgresql-${BUILD_PG_VERSION} postgresql-client-${BUILD_PG_VERSION} postgresql-contrib-${BUILD_PG_VERSION}
-
-# Run the rest of the commands as the ``postgres`` user created by the ``postgres-${BUILD_PG_VERSION}`` package when it was ``apt-get installed``
 USER postgres
-
 # Set the locale of the db cluster
 ARG BUILD_LOCALE="de_DE"
 RUN pg_dropcluster --stop ${BUILD_PG_VERSION} main && pg_createcluster --locale ${BUILD_LOCALE}.UTF-8 --start ${BUILD_PG_VERSION} main
 
+# Adjust PostgreSQL configuration so that remote connections to the database are possible. 
+RUN echo "host	all	all	0.0.0.0/0	md5" >> /etc/postgresql/${BUILD_PG_VERSION}/main/pg_hba.conf
+
+# And add ``listen_addresses`` to ``/etc/postgresql/${BUILD_PG_VERSION}/main/postgresql.conf``
+RUN sed -ri "s/^#(listen_addresses\s*=\s*)\S+/\1'*'/" "/etc/postgresql/${BUILD_PG_VERSION}/main/postgresql.conf"
 # Create a PostgreSQL role named ``docker`` with ``docker`` as the password and
 # then create a database `docker` owned by the ``docker`` role.
 ARG BUILD_PG_PASSWD="docker"
@@ -94,20 +59,21 @@ RUN    /etc/init.d/postgresql start &&\
     createdb -O docker docker &&\
     createdb -O kivitendo kivitendo
 
-# Adjust PostgreSQL configuration so that remote connections to the
-# database are possible. 
-RUN echo "host	all	all	0.0.0.0/0	md5" >> /etc/postgresql/${BUILD_PG_VERSION}/main/pg_hba.conf
+USER root
 
-# And add ``listen_addresses`` to ``/etc/postgresql/${BUILD_PG_VERSION}/main/postgresql.conf``
-RUN sed -ri "s/^#(listen_addresses\s*=\s*)\S+/\1'*'/" "/etc/postgresql/${BUILD_PG_VERSION}/main/postgresql.conf"
+# ADD KIVITENDO
+# Kivitendo intallation
+ARG BUILD_KIVITENDO_VERSION="release-3.1.0"
+RUN git clone https://github.com/kivitendo/kivitendo-erp.git /var/www/kivitendo-erp
+RUN cd /var/www/kivitendo-erp && git checkout ${BUILD_KIVITENDO_VERSION}
+ADD kivitendo.conf /var/www/kivitendo-erp/config/kivitendo.conf
 
+#Check Kivitendo installation
+RUN cd /var/www/kivitendo-erp/ && perl /var/www/kivitendo-erp/scripts/installation_check.pl
 # Expose the PostgreSQL port
 EXPOSE 5432
 
 
-# ADD APACHE
-# Run the rest of the commands as the ``root`` user
-USER root
 
 RUN mkdir -p /var/lock/apache2 /var/run/apache2 /var/run/sshd
 

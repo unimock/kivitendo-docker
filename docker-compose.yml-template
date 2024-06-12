@@ -1,4 +1,3 @@
-version: '2'
 services:
   wws:
     ##################################################
@@ -7,26 +6,40 @@ services:
     build:
       context: ./build
       dockerfile: Dockerfile
+      x-bake:
+        platforms:
+          - linux/amd64
+          - linux/arm64
       args:
+        BUILD_IMAGE: ubuntu:14.04
         BUILD_TZ: Europe/Berlin
         BUILD_LOCALE: de_DE
         BUILD_PG_PASSWD: docker
         BUILD_PG_VERSION: 9.3
-        BUILD_KIVITENDO_VERSION: release-3.2.0
+        #BUILD_KIVITENDO_VERSION: release-3.2.0
+        BUILD_KIVITENDO_VERSION: release-3.1.0
+
     ##################################################
     # RUN section
     ##################################################
-    image: unimock/kivitendo-docker:0.0.1
+    image: unimock/kivitendo-docker:0.1.0
     container_name: wws
     restart: unless-stopped
     hostname: myhost
     domainname: test.com 
     volumes:
+      - postgresql:/var/lib/postgresql
       - ./service:/service # service volume for overwrites (ovm) and migration (mig)
-      - ./persistent/postgresql:/var/lib/postgresql
+      #- ./persistent/postgresql:/var/lib/postgresql
     environment:
        # ssh rsyslog cron apache2 postgresql
        - DISABLED_SERVICES=ssh
     ports:
       - "8881:80"
+volumes:
+  postgresql:
+    driver_opts:
+      type: none
+      device: /wws/postgresql
+      o: bind
 
