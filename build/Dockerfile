@@ -68,7 +68,7 @@ RUN cd /var/www/kivitendo-erp/ && perl /var/www/kivitendo-erp/scripts/installati
 RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys B97B0AFCAA1A47F044F244A07FCC7D46ACCC4CF8
 
 # Add PostgreSQL's repository. It contains the most recent stable release
-RUN echo "deb http://apt.postgresql.org/pub/repos/apt/ precise-pgdg main" > /etc/apt/sources.list.d/pgdg.list
+RUN echo "deb http://apt-archive.postgresql.org/pub/repos/apt trusty-pgdg-archive main" > /etc/apt/sources.list.d/pgdg.list
 
 # Install ``python-software-properties``, ``software-properties-common`` and PostgreSQL
 
