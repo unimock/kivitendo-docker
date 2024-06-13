@@ -25,15 +25,15 @@ services:
     image: unimock/kivitendo-docker:0.1.0
     container_name: wws
     restart: unless-stopped
-    hostname: myhost
-    domainname: test.com 
+    hostname: molior2
+    domainname: atk.intra 
     volumes:
       - postgresql:/var/lib/postgresql
       - ./service:/service # service volume for overwrites (ovm) and migration (mig)
       #- ./persistent/postgresql:/var/lib/postgresql
     environment:
-       # ssh rsyslog cron apache2 postgresql
-       - DISABLED_SERVICES=ssh
+       # cron apache2 postgresql
+       - DISABLED_SERVICES=
     ports:
       - "8881:80"
 volumes:

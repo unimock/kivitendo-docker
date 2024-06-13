@@ -10,15 +10,13 @@ RUN echo "$BUILD_TZ" > /etc/timezone && \
     dpkg-reconfigure -f noninteractive tzdata
 
 #Packages 
-#RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 RUN apt-get update
 RUN apt-get -y upgrade
 
-# --- Install the SSH server
-RUN apt-get -y install --no-install-recommends \
-      openssh-server rsync git sendemail vim wget cron rsyslog
-
-RUN DEBIAN_FRONTEND=noninteractive apt-get -y install apache2 libarchive-zip-perl libclone-perl \
+ARG BUILD_PG_VERSION="9.3"
+RUN DEBIAN_FRONTEND=noninteractive apt-get -y install \
+    rsync sendemail vim wget cron \
+    apache2 libarchive-zip-perl libclone-perl \
     libconfig-std-perl libdatetime-perl libdbd-pg-perl libdbi-perl \
     libemail-address-perl  libemail-mime-perl libfcgi-perl libjson-perl \
     liblist-moreutils-perl libnet-smtp-ssl-perl libnet-sslglue-perl \
@@ -29,12 +27,11 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get -y install apache2 libarchive-zip-per
     libfile-copy-recursive-perl git build-essential \
     libgd-gd2-perl libimage-info-perl sed supervisor libgd-gd2-perl \
     libalgorithm-checkdigits-perl libapache2-mod-fcgid language-pack-de-base \
-    python-software-properties software-properties-common
+    python-software-properties software-properties-common \
+    texlive-latex-base texlive-fonts-recommended texlive-fonts-extra texlive-latex-extra texlive-lang-german texlive-generic-extra \
+    postgresql-${BUILD_PG_VERSION} postgresql-client-${BUILD_PG_VERSION} postgresql-contrib-${BUILD_PG_VERSION}
 
-ARG BUILD_PG_VERSION="9.3"
-
-RUN DEBIAN_FRONTEND=noninteractive apt-get update &&\
-    apt-get install -y postgresql-${BUILD_PG_VERSION} postgresql-client-${BUILD_PG_VERSION} postgresql-contrib-${BUILD_PG_VERSION}
+RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 #Install missing Perl Modules
 RUN cpan HTML::Restrict
@@ -50,14 +47,15 @@ RUN echo "host	all	all	0.0.0.0/0	md5" >> /etc/postgresql/${BUILD_PG_VERSION}/mai
 
 # And add ``listen_addresses`` to ``/etc/postgresql/${BUILD_PG_VERSION}/main/postgresql.conf``
 RUN sed -ri "s/^#(listen_addresses\s*=\s*)\S+/\1'*'/" "/etc/postgresql/${BUILD_PG_VERSION}/main/postgresql.conf"
+
 # Create a PostgreSQL role named ``docker`` with ``docker`` as the password and
 # then create a database `docker` owned by the ``docker`` role.
-ARG BUILD_PG_PASSWD="docker"
-RUN    /etc/init.d/postgresql start &&\
-    psql --command "CREATE USER docker WITH SUPERUSER PASSWORD '${BUILD_PG_PASSWD}';" &&\
-    psql --command "CREATE USER kivitendo WITH SUPERUSER PASSWORD '${BUILD_PG_PASSWD}';" &&\
-    createdb -O docker docker &&\
-    createdb -O kivitendo kivitendo
+#ARG BUILD_PG_PASSWD="docker"
+#RUN    /etc/init.d/postgresql start &&\
+#    psql --command "CREATE USER docker WITH SUPERUSER PASSWORD '${BUILD_PG_PASSWD}';" &&\
+#    psql --command "CREATE USER kivitendo WITH SUPERUSER PASSWORD '${BUILD_PG_PASSWD}';" &&\
+#    createdb -O docker docker &&\
+#    createdb -O kivitendo kivitendo
 
 USER root
 
@@ -75,7 +73,7 @@ EXPOSE 5432
 
 
 
-RUN mkdir -p /var/lock/apache2 /var/run/apache2 /var/run/sshd
+RUN mkdir -p /var/lock/apache2 /var/run/apache2
 
 # SET Servername to localhost
 RUN echo "ServerName localhost" >> /etc/apache2/conf-available/servername.conf
